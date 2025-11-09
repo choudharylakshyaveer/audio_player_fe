@@ -5,6 +5,7 @@ import VideoPlayer from "./components/video_player/VideoPlayer";
 import { AudioPlayerProvider } from "./components/audio_player/context/AudioPlayerContext";
 import AlbumDetails from "./components/audio_player/components/AlbumDetails";
 import PlayerBar from "./components/audio_player/PlayerBar";
+import GenericHolder from "./components/audio_player/components/GenericHolder";
 
 export default function App() {
   return (
@@ -18,6 +19,10 @@ export default function App() {
               <Route
                 path="/audio-player/albums/:albumName"
                 element={<AlbumDetails />}
+              />
+              <Route
+                path="/audio-player/generalList/:columnName/:filterValue"
+                element={<GenericHolder />}
               />
               <Route path="/video-player" element={<VideoPlayer />} />
               <Route

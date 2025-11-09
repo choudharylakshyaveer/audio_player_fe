@@ -1,174 +1,148 @@
 // src/components/audio_player/components/PlayerBar.jsx
 import React, { useEffect, useRef, useState } from "react";
-import Hls from "hls.js";
-import { Repeat } from "lucide-react"; // 🔁 icon
+import API_BASE_URL from "../../config";
 import { useAudioPlayer } from "./context/AudioPlayerContext";
+import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
 
 export default function PlayerBar() {
+  const audioRef = useRef(null);
   const {
     currentTrack,
     isPlaying,
+    setIsPlaying,
     playNext,
     playPrev,
-    setIsPlaying,
     isLooping,
-    toggleLoop,
   } = useAudioPlayer();
 
-  const audioRef = useRef(null);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [progress, setProgress] = useState(0); // percentage
+  const [duration, setDuration] = useState(0); // in seconds
+  const [currentTime, setCurrentTime] = useState(0); // in seconds
 
-  /** 🎵 Load new track with HLS */
+  // 🎧 Load and play new track
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
 
+    const flacUrl = `${API_BASE_URL.RESOURCE_URL}/stream/flac/${currentTrack.id}`;
+    console.log("🎧 Now playing:", flacUrl);
+
     const audio = audioRef.current;
-    let hls;
+    audio.src = flacUrl;
+    audio.load();
 
-    if (Hls.isSupported()) {
-      hls = new Hls();
-      hls.loadSource(currentTrack.playlistUrl);
-      hls.attachMedia(audio);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        audio.play().catch(() => {});
-        setIsPlaying(true);
-      });
-    } else if (audio.canPlayType("application/vnd.apple.mpegurl")) {
-      audio.src = currentTrack.playlistUrl;
-      audio.play().catch(() => {});
-      setIsPlaying(true);
+    if (isPlaying) {
+      audio.play().catch((err) => console.error("Playback error:", err));
     }
-
-    return () => {
-      if (hls) hls.destroy();
-    };
   }, [currentTrack]);
 
-  /** 🎚️ Track progress updates */
+  // ▶️ Handle play/pause state
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.play().catch((err) => console.error("Playback error:", err));
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying]);
+
+  // ⏭️ Handle time updates
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const updateProgress = () => {
-      setProgress(audio.currentTime);
+      setCurrentTime(audio.currentTime);
       setDuration(audio.duration || 0);
-    };
-
-    const handleEnded = () => {
-      playNext();
-      if (isLooping && !currentTrack) {
-        // If playlist ended, start over
-        playNext();
-      }
+      setProgress((audio.currentTime / (audio.duration || 1)) * 100);
     };
 
     audio.addEventListener("timeupdate", updateProgress);
-    audio.addEventListener("ended", handleEnded);
+    return () => audio.removeEventListener("timeupdate", updateProgress);
+  }, []);
 
-    return () => {
-      audio.removeEventListener("timeupdate", updateProgress);
-      audio.removeEventListener("ended", handleEnded);
-    };
-  }, [currentTrack, playNext, isLooping]);
-
-  /** ▶️⏸️ Play / Pause toggle */
-  const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
+  const handleEnded = () => {
+    if (isLooping) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
     } else {
-      audio.play().catch(() => {});
-      setIsPlaying(true);
+      playNext();
     }
   };
 
-  /** 🕓 Seekbar move */
+  // ⏩ Seek manually
   const handleSeek = (e) => {
-    const newTime = e.target.value;
-    audioRef.current.currentTime = newTime;
-    setProgress(newTime);
+    const newProgress = Number(e.target.value);
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+
+    const newTime = (newProgress / 100) * duration;
+    audio.currentTime = newTime;
+    setProgress(newProgress);
   };
 
-  /** ⏱️ Format seconds to MM:SS */
-  const formatTime = (time) => {
-    if (isNaN(time)) return "0:00";
-    const min = Math.floor(time / 60);
-    const sec = Math.floor(time % 60).toString().padStart(2, "0");
-    return `${min}:${sec}`;
+  // Format seconds → mm:ss
+  const formatTime = (secs) => {
+    if (!secs || isNaN(secs)) return "0:00";
+    const minutes = Math.floor(secs / 60);
+    const seconds = Math.floor(secs % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
-
-  if (!currentTrack) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-4 flex flex-col items-center shadow-lg">
-      <audio ref={audioRef} controls={false} />
+    <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 flex flex-col items-center shadow-2xl border-t border-slate-700">
+      <audio
+        ref={audioRef}
+        onEnded={handleEnded}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        className="hidden"
+      />
 
-      {/* 🔘 Controls */}
-      <div className="flex items-center justify-center gap-4 mb-3">
+      {/* 🎶 Track Info */}
+      <div className="w-full max-w-3xl flex items-center justify-between text-sm mb-2">
+        <div className="truncate font-semibold">
+          {currentTrack ? currentTrack.title : "No track selected"}
+        </div>
+        <div className="text-gray-400 text-xs">
+          {formatTime(currentTime)} / {formatTime(duration)}
+        </div>
+      </div>
+
+      {/* 🎚️ Custom Seekbar */}
+      <input
+        type="range"
+        min="0"
+        max="100"
+        step="0.1"
+        value={progress}
+        onChange={handleSeek}
+        className="w-full max-w-3xl h-2 accent-yellow-500 rounded-lg appearance-none cursor-pointer bg-slate-700"
+      />
+
+      {/* ⏯️ Controls */}
+      <div className="flex items-center gap-6 mt-3">
         <button
           onClick={playPrev}
-          className="px-4 py-2 bg-yellow-400 text-black rounded-full shadow-md hover:bg-yellow-300 transition"
+          className="p-2 hover:text-yellow-400 transition-colors"
         >
-          ⏮️
+          <SkipBack size={26} />
         </button>
 
         <button
-          onClick={togglePlay}
-          className="px-4 py-2 bg-yellow-400 text-black rounded-full shadow-md hover:bg-yellow-300 transition"
+          onClick={() => setIsPlaying((prev) => !prev)}
+          className="bg-yellow-500 hover:bg-yellow-400 text-black rounded-full p-3 transition-transform transform active:scale-90"
         >
-          {isPlaying ? "⏸️" : "▶️"}
+          {isPlaying ? <Pause size={26} /> : <Play size={26} />}
         </button>
 
         <button
           onClick={playNext}
-          className="px-4 py-2 bg-yellow-400 text-black rounded-full shadow-md hover:bg-yellow-300 transition"
+          className="p-2 hover:text-yellow-400 transition-colors"
         >
-          ⏭️
+          <SkipForward size={26} />
         </button>
-
-        {/* 🔁 Loop Toggle Button */}
-        <button
-          onClick={toggleLoop}
-          title="Toggle Loop"
-          className={`px-3 py-2 rounded-full transition ${
-            isLooping
-              ? "bg-yellow-400 text-black shadow-md"
-              : "bg-gray-700 text-white hover:bg-yellow-300"
-          }`}
-        >
-          <Repeat size={20} />
-        </button>
-      </div>
-
-      {/* 📈 Seekbar */}
-      <div className="flex items-center w-full max-w-xl gap-2">
-        <span className="text-xs text-gray-300 w-10 text-right">
-          {formatTime(progress)}
-        </span>
-
-        <input
-          type="range"
-          min="0"
-          max={duration || 0}
-          value={progress}
-          step="0.1"
-          onChange={handleSeek}
-          className="flex-1 cursor-pointer accent-yellow-400"
-        />
-
-        <span className="text-xs text-gray-300 w-10 text-left">
-          {formatTime(duration)}
-        </span>
-      </div>
-
-      {/* 🎶 Track Info */}
-      <div className="text-sm mt-2 text-gray-300 truncate w-full text-center">
-        🎵 {currentTrack.title}{" "}
-        {currentTrack.artist ? `– ${currentTrack.artist}` : ""}
       </div>
     </div>
   );

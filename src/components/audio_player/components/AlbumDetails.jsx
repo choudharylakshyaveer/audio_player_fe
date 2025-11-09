@@ -8,7 +8,7 @@ export default function AlbumDetails() {
   const { albumName } = useParams();
   const [albumData, setAlbumData] = useState([]);
   const [albumArt, setAlbumArt] = useState("/default_album.png");
-  const { playTrackList, currentTrack } = useAudioPlayer();
+  const { playTrackList, currentTrack,trackImage ,setTrackImage } = useAudioPlayer();
 
   useEffect(() => {
     if (!albumName) return;
@@ -26,8 +26,14 @@ export default function AlbumDetails() {
     const firstTrackId = albumData[0].id;
     ApiService.get(`/albums/image/${firstTrackId}`, {}, "RESOURCE")
       .then((res) => {
-        if (typeof res === "string") setAlbumArt(`data:image/jpeg;base64,${res}`);
-        else if (res?.image) setAlbumArt(`data:image/jpeg;base64,${res.image}`);
+        if (typeof res === "string") {
+          setAlbumArt(`data:image/jpeg;base64,${res}`);
+          setTrackImage(`data:image/jpeg;base64,${res}`);
+        }
+        else if (res?.image) {
+          setAlbumArt(`data:image/jpeg;base64,${res.image}`);
+          setTrackImage(`data:image/jpeg;base64,${res.image}`);
+        }
       })
       .catch(() => setAlbumArt("/default_album.png"));
   }, [albumData]);
@@ -38,7 +44,7 @@ export default function AlbumDetails() {
       id: t.id,
       title: t.album_movie_show_title || t.title || `Track ${t.id}`,
       artist: t.artist || t.singer || "",
-      playlistUrl: `http://localhost:8082/playlist/${t.id}?lossless=false&hlsTime=1`,
+      playlistUrl: `http://localhost:8082/playlist/${t.id}?lossless=true&hlsTime=1`,
       cover: t.cover || `data:image/jpeg;base64,${t.attachedPicture || ""}` || albumArt,
       __raw: t,
     }));
@@ -48,6 +54,7 @@ const handlePlay = (index) => {
   console.log("🎯 handlePlay triggered! Index:", index);
   console.log("Playlist:", playlist);
   playTrackList(playlist, index);
+  
 };
 
   return (
@@ -56,6 +63,8 @@ const handlePlay = (index) => {
         <img
           src={albumArt}
           alt={albumName}
+          loading="lazy"
+          decoding="async"
           className="w-32 h-32 rounded-lg object-cover shadow-md"
         />
         <div>

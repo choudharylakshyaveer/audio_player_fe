@@ -8,7 +8,8 @@ export function AudioPlayerProvider({ children }) {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLooping, setIsLooping] = useState(false); // 🔁 NEW
+  const [isLooping, setIsLooping] = useState(false);
+  const [trackImage, setTrackImage] = useState(null);
 
   const playTrackList = (list, index) => {
     setPlaylist(list);
@@ -56,6 +57,9 @@ export function AudioPlayerProvider({ children }) {
         playPrev,
         isLooping,
         toggleLoop,
+        trackImage,
+        setTrackImage
+
       }}
     >
       {children}

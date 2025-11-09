@@ -1,8 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import "~slick-carousel/slick/slick.css";
-@import "~slick-carousel/slick/slick-theme.css";
+@import "slick-carousel/slick/slick.css";
+@import "slick-carousel/slick/slick-theme.css";
+
 
 body {
   margin: 0;
@@ -17,3 +18,32 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+
+
+
+
+.slick-slide > div {
+  margin: 0 6px;
+  box-sizing: border-box;
+}
+
+.slick-list {
+  margin: 0 -6px;
+  overflow: hidden;
+}
+
+/* ✅ Force exact sizing for small devices */
+@media (max-width: 500px) {
+  .slick-track {
+    display: flex !important;
+    align-items: stretch;
+  }
+  .slick-slide {
+    width: calc(50% - 12px) !important; /* exactly 2 slides visible */
+  }
+  .slick-slide > div {
+    margin: 0 6px;
+  }
+}
+
