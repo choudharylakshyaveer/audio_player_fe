@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Moon, Settings, LogOut } from "lucide-react";
+import { Moon, Sun, Settings, LogOut } from "lucide-react";
 import AuthModal from "../../../auth/AuthModal";
 import API_BASE_URL from "../../../../config";
 
@@ -8,8 +8,10 @@ export default function MenuBar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profileIcon, setProfileIcon] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const initialDark = document.documentElement.classList.contains("dark");
+  const [darkMode, setDarkMode] = useState(initialDark);
 
+  // ✅ Initialize login & theme
   useEffect(() => {
     const token = sessionStorage.getItem("authToken");
     if (token) setIsLoggedIn(true);
@@ -23,18 +25,20 @@ export default function MenuBar() {
         .catch(() => setProfileIcon(null));
     }
 
-    // ✅ Initialize dark mode from localStorage or system preference
+    // Initialize dark mode from localStorage or system preference
     const savedTheme = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
-      setDarkMode(true);
-      document.documentElement.classList.add("dark");
-    } else {
-      setDarkMode(false);
-      document.documentElement.classList.remove("dark");
-    }
+    const initialDark = savedTheme === "dark" || (!savedTheme && prefersDark);
+    setDarkMode(initialDark);
+    document.documentElement.classList.toggle("dark", initialDark);
   }, []);
+
+  const toggleDarkMode = () => {
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+    document.documentElement.classList.toggle("dark", newMode);
+    localStorage.setItem("theme", newMode ? "dark" : "light");
+  };
 
   const handleLogout = () => {
     sessionStorage.removeItem("authToken");
@@ -42,24 +46,28 @@ export default function MenuBar() {
     setDropdownOpen(false);
   };
 
-  const toggleDarkMode = () => {
-    const newMode = !darkMode;
-    setDarkMode(newMode);
-    if (newMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  };
-
   return (
     <div className="flex items-center justify-between px-6 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-md">
-      {/* Logo */}
-      <div className="text-xl font-bold">🎵 MyApp</div>
+      
+      {/* Left section - Logo + Theme toggle */}
+      <div className="flex items-center gap-3">
+        <div className="text-xl font-bold">🎵 MyApp</div>
 
-      {/* Search Bar */}
+        {/* 🌗 Small Dark/Light Mode Toggle */}
+        <button
+          onClick={toggleDarkMode}
+          className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-slate-700 transition"
+          title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {darkMode ? (
+            <Sun className="w-5 h-5 text-yellow-400" />
+          ) : (
+            <Moon className="w-5 h-5 text-slate-700 dark:text-white" />
+          )}
+        </button>
+      </div>
+
+      {/* Center - Search Bar */}
       <div className="flex-1 text-center">
         <input
           type="text"
@@ -68,7 +76,7 @@ export default function MenuBar() {
         />
       </div>
 
-      {/* Right Section */}
+      {/* Right Section - Profile / Auth */}
       <div className="relative">
         {!isLoggedIn ? (
           <button
@@ -87,14 +95,6 @@ export default function MenuBar() {
             />
             {dropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 text-slate-800 dark:text-white rounded-lg shadow-lg py-2 z-10">
-                
-                <button
-                  className="flex items-center w-full px-4 py-2 hover:bg-gray-200 dark:hover:bg-slate-700"
-                  onClick={toggleDarkMode}
-                >
-                  <Moon className="w-4 h-4 mr-2" />
-                  {darkMode ? "Light Mode" : "Night Mode"}
-                </button>
                 <button
                   className="flex items-center w-full px-4 py-2 hover:bg-gray-200 dark:hover:bg-slate-700"
                   onClick={() => alert("Open Settings modal here")}

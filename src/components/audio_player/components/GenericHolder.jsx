@@ -1,102 +1,94 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import ApiService from "../../common/ApiService";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
-import API_BASE_URL from "../../../config";
+import Card from "./Card";
 
 export default function GenericHolder() {
-  const { columnName, filterValue } = useParams();
+  const [searchParams] = useSearchParams();
   const [tracks, setTracks] = useState([]);
-  const [coverImage, setCoverImage] = useState("/default_album.png");
-  const { playTrackList, currentTrack, trackImage, setTrackImage } = useAudioPlayer();
+  const { playTrackList } = useAudioPlayer();
 
-  /** 🎧 Fetch tracks for this filter */
-  useEffect(() => {
-    if (!columnName || !filterValue) return;
-    ApiService.get(`/column/${columnName}/${filterValue}`, {}, "RESOURCE")
-      .then((res) => {
-        if (Array.isArray(res)) setTracks(res);
-        else if (res?.tracks) setTracks(res.tracks);
-        else setTracks([]);
-      })
-      .catch(() => setTracks([]));
-  }, [columnName, filterValue]);
+  const type = searchParams.get("type");
+  const columnName = searchParams.get("columnName");
+  const filterValue = searchParams.get("filterValue");
+  const playlistId = searchParams.get("playlistId");
 
-  /** 🖼️ Fetch an image from first track (for banner display) */
   useEffect(() => {
-    if (!tracks?.length) return;
-    const firstTrackId = tracks[0].id;
-    ApiService.get(`/albums/image/${firstTrackId}`, {}, "RESOURCE")
-      .then((res) => {
-        if (typeof res === "string") {
-          setCoverImage(`data:image/jpeg;base64,${res}`);
-          setTrackImage(`data:image/jpeg;base64,${res}`);
-        } else if (res?.image) {
-          setCoverImage(`data:image/jpeg;base64,${res.image}`);
-          setTrackImage(`data:image/jpeg;base64,${res.image}`);
+    async function fetchData() {
+      try {
+        let response;
+        if (type === "COLUMN") {
+          response = await ApiService.get(
+            `/column/${columnName}/${filterValue}`,
+            {},
+            "RESOURCE"
+          );
+        } else if (type === "PLAYLIST") {
+          response = await ApiService.get(
+            `/playlist/${playlistId}`,
+            {},
+            "RESOURCE"
+          );
         }
-      })
-      .catch(() => setCoverImage("/default_album.png"));
-  }, [tracks]);
 
-  /** 🎵 Prepare playlist */
-  const playlist = useMemo(() => {
-    if (!Array.isArray(tracks)) return [];
-    return tracks.map((t) => ({
-      id: t.id,
-      title: t.album_movie_show_title || t.title || `Track ${t.id}`,
-      artist: t.artist || t.singer || "",
-      playlistUrl: `${API_BASE_URL.RESOURCE_URL}/playlist/${t.id}?lossless=true&hlsTime=1`,
-      cover: t.cover || `data:image/jpeg;base64,${t.attachedPicture || ""}` || coverImage,
-      __raw: t,
-    }));
-  }, [tracks, coverImage]);
+        const data = response?.data || response || [];
+        setTracks(Array.isArray(data) ? data : [data]);
+      } catch (err) {
+        console.error("Error fetching tracks:", err);
+      }
+    }
+    fetchData();
+  }, [type, columnName, filterValue, playlistId]);
 
-  /** ▶️ Handle track click */
   const handlePlay = (index) => {
-    console.log(`🎯 Playing from ${columnName}: ${filterValue} (index ${index})`);
-    playTrackList(playlist, index);
+    if (!tracks.length) return;
+    playTrackList(tracks, index);
   };
 
   return (
-    <div className="p-6 pb-32">
-      {/* 🧠 Header Section */}
-      <div className="flex items-center gap-4 mb-6">
-        <img
-          src={coverImage}
-          alt={filterValue}
-          className="w-32 h-32 rounded-lg object-cover shadow-md"
-        />
-        <div>
-          <h2 className="text-2xl font-bold text-blue-600 capitalize">
-            {filterValue}
-          </h2>
-          <p className="text-gray-500">{tracks.length} tracks found by {columnName}</p>
-        </div>
-      </div>
+    <div className="p-6 bg-white dark:bg-slate-900 min-h-screen">
+      <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+        {type === "PLAYLIST"
+          ? `🎵 Playlist — ${playlistId}`
+          : `🎧 ${columnName || ""}: ${filterValue || ""}`}
+      </h2>
 
-      {/* 🎶 Track List */}
       {tracks.length === 0 ? (
-        <p className="text-center text-gray-500">Loading tracks...</p>
+        <p className="text-gray-500 dark:text-gray-400 text-center mt-10">
+          No tracks found.
+        </p>
       ) : (
-        <ul className="divide-y divide-gray-300">
-          {tracks.map((t, index) => (
-            <li
-              key={t.id}
-              className={`p-2 cursor-pointer transition-colors ${
-                currentTrack?.id === String(t.id) || currentTrack?.id === t.id
-                  ? "bg-yellow-400 text-black"
-                  : "hover:bg-gray-200"
-              }`}
-              onClick={() => handlePlay(index)}
-            >
-              🎵 {t.album_movie_show_title || t.title || `Track ${t.id}`}
-              {t.artist ? (
-                <span className="text-sm text-gray-500 ml-2">– {t.artist}</span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
+          {tracks.map((track, index) => {
+            const title =
+              track.title || track.fileName?.replace(".flac", "") || "Untitled Track";
+            const artist =
+              track.artists?.[0] || track.albumArtist || track.composer || "Unknown Artist";
+
+            return (
+              <Card key={track.id} onClick={() => handlePlay(index)}>
+                {/* Track placeholder / album art */}
+                <div className="w-full h-48 bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-gray-700 dark:text-gray-200 text-sm">
+                  🎵 {artist.charAt(0)}
+                </div>
+                <div className="p-3">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {title}
+                  </p>
+                  <p className="text-xs text-gray-700 dark:text-gray-200 truncate">
+                    {artist}
+                  </p>
+                  {track.album && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {track.album}
+                    </p>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );

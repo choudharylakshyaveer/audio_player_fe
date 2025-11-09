@@ -12,18 +12,16 @@ export default function App() {
     <Router>
       <AudioPlayerProvider>
         <div className="min-h-screen flex flex-col bg-gray-50">
-          <div className="flex-1">
+          {/* Add padding-bottom to avoid overlap */}
+          <div className="flex-1 pb-28">
             <Routes>
               <Route path="/" element={<Navigate to="/audio-player" replace />} />
               <Route path="/audio-player" element={<AudioPlayer />} />
-              <Route
-                path="/audio-player/albums/:albumName"
-                element={<AlbumDetails />}
-              />
-              <Route
-                path="/audio-player/generalList/:columnName/:filterValue"
-                element={<GenericHolder />}
-              />
+              <Route path="/audio-player/albums/:albumName" element={<AlbumDetails />} />
+
+              {/* ✅ GenericHolder reads query params */}
+              <Route path="/audio-player/generalList" element={<GenericHolder />} />
+
               <Route path="/video-player" element={<VideoPlayer />} />
               <Route
                 path="*"
@@ -36,7 +34,7 @@ export default function App() {
             </Routes>
           </div>
 
-          {/* Persistent bottom player */}
+          {/* PlayerBar always visible */}
           <PlayerBar />
         </div>
       </AudioPlayerProvider>

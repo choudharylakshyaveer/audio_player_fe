@@ -7,6 +7,7 @@ import { useAudioPlayer } from "../context/AudioPlayerContext";
 export default function Albums() {
   const [albums, setAlbums] = useState([]);
   const [artists, setArtists] = useState([]);
+  const [playlists, setPlaylists] = useState([]);
 
   const navigate = useNavigate();
   const { playTrack } = useAudioPlayer();
@@ -18,13 +19,16 @@ export default function Albums() {
     ApiService.get("/column/artists", {}, "RESOURCE")
       .then(setArtists)
       .catch(console.error);
+    ApiService.get("/playlist", {}, "RESOURCE").then(setPlaylists);
   }, []);
 
   const handleAlbumClick = (album) => {
     navigate(`/audio-player/albums/${album.album}`);
   };
   const handleElementClick = (columnName,filterValue ) => {
-    navigate(`/audio-player/generalList/${columnName}/${filterValue}`);
+  navigate(`/audio-player/generalList?type=COLUMN&columnName=${columnName}&filterValue=${encodeURIComponent(filterValue)}`);
+
+    // navigate(`/audio-player/generalList/${columnName}/${filterValue}`);
   };
 
 
@@ -72,7 +76,21 @@ const renderElements = (artistName) => (
 
       />
 
-
+      <GenericCarousel
+        title="🎶 Playlists"
+        items={playlists}
+        renderItem={(pl) => (
+          <div
+            onClick={() => navigate(`/audio-player/generalList?type=PLAYLIST&playlistId=${pl.id}`)
+}
+            
+            className="p-4 rounded-xl bg-yellow-100 dark:bg-slate-700 text-center"
+          >
+            <h3 className="font-bold text-lg">{pl.name}</h3>
+            <p className="text-gray-500 text-sm">{pl.tracks?.length || 0} tracks</p>
+          </div>
+        )}
+      />
     </>
   );
 }
