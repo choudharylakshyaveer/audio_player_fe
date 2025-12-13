@@ -12,10 +12,8 @@ const ApiService = {
 
       // Select base URL based on type
       const baseUrl = type === "AUTH" ? API_BASE_URL.AUTH_URL : API_BASE_URL.RESOURCE_URL;
-      console.log("type: "+type);
       const fullUrl = `${baseUrl}${url}`;
       console.log(`Making ${options.method || "GET"} request to:`, fullUrl);
-      console.log("baseUrl:", baseUrl);
 
       const response = await fetch(fullUrl, {
         headers: { ...defaultHeaders, ...(options.headers || {}) },

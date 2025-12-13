@@ -23,7 +23,7 @@ export default function AlbumDetails() {
   useEffect(() => {
     if (!albumData?.length) return;
     const firstTrackId = albumData[0].id;
-    ApiService.get(`/albums/image/${firstTrackId}`, {}, "RESOURCE")
+    ApiService.get(`/image/${firstTrackId}`, {}, "RESOURCE")
       .then((res) => {
         if (typeof res === "string") {
           setAlbumArt(`data:image/jpeg;base64,${res}`);

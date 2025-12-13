@@ -12,7 +12,6 @@ export default function AudioPlayer() {
         <div className="flex-1">
           <Albums />
         </div>
-        <PlayerBar />
       </div>
     </AudioPlayerProvider>
   );
