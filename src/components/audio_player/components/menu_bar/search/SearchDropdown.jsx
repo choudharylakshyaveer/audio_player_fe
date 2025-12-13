@@ -12,11 +12,20 @@ export default function SearchDropdown({
   onClose = () => {},
   onShowFull = () => {},
 }) {
+  const ctx = useAudioPlayer();
+  const { playAllSelected } = useAudioPlayer();
+
+  console.log("SearchDropdown context:", ctx);
+
   const containerRef = useRef(null);
-  const { playOrAddAndPlay, playTrackList  } = useAudioPlayer();
+  const { playOrAddAndPlay, playTrackList } = useAudioPlayer();
 
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState({ albums: [], artists: [], audioTracks: [] });
+  const [data, setData] = useState({
+    albums: [],
+    artists: [],
+    audioTracks: [],
+  });
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
   /* -------------------- Debounce -------------------- */
@@ -47,8 +56,12 @@ export default function SearchDropdown({
 
         setData({
           albums: await Promise.all((res.albums || []).slice(0, 4).map(enrich)),
-          artists: await Promise.all((res.artists || []).slice(0, 4).map(enrich)),
-          audioTracks: await Promise.all((res.audioTracks || []).slice(0, 6).map(enrich)),
+          artists: await Promise.all(
+            (res.artists || []).slice(0, 4).map(enrich)
+          ),
+          audioTracks: await Promise.all(
+            (res.audioTracks || []).slice(0, 6).map(enrich)
+          ),
         });
       } catch (e) {
         console.error(e);
@@ -65,53 +78,60 @@ export default function SearchDropdown({
     if (!visible) return;
 
     const close = (e) =>
-  containerRef.current &&
-  !containerRef.current.contains(e.target) &&
-  onClose();
-
+      containerRef.current &&
+      !containerRef.current.contains(e.target) &&
+      onClose();
 
     document.addEventListener("click", close);
-    document.addEventListener("keydown", (e) => e.key === "Escape" && onClose());
+    document.addEventListener(
+      "keydown",
+      (e) => e.key === "Escape" && onClose()
+    );
 
     return () => document.removeEventListener("mousedown", close);
   }, [visible]);
 
   /* -------------------- PLAY (CRITICAL) -------------------- */
   const handlePlay = (item) => {
-  if (!item?.id) return;
+    if (!item?.id) return;
 
-  const track = {
-    id: String(item.id),
-    title: item.title || item.album_movie_show_title || "Unknown",
-    album_movie_show_title: item.album_movie_show_title || "",
-    artists: item.artists || [],
-    cover: item.image || "",
+    const track = {
+      id: String(item.id),
+      title: item.title || item.album_movie_show_title,
+      album_movie_show_title: item.album_movie_show_title || "",
+      artists: item.artists || [],
+      cover: item.image || "",
+    };
+
+    console.log("▶ SearchDropdown play:", track);
+
+    // 🔥 THIS sets playlist + currentIndex = 0
+    playAllSelected([track], 0);
+
+    onClose();
   };
-
-  console.log("▶ Playing from SearchDropdown:", track);
-
-  // EXACT SAME BEHAVIOR AS GenericHolder
-  playTrackList([track], 0);
-
-  onClose();
-};
-
 
   /* -------------------- Card -------------------- */
   const ResultCard = ({ item, title, subtitle }) => (
     <div
       onClick={(e) => {
         e.stopPropagation();
-        handlePlay(item);}
-      }
+        handlePlay(item);
+      }}
       className="p-2 flex gap-3 items-center rounded-lg
                  hover:bg-slate-200 dark:hover:bg-slate-700
                  cursor-pointer transition"
     >
-      <img src={item.image} className="w-9 h-9 rounded-md object-cover" alt="" />
+      <img
+        src={item.image}
+        className="w-9 h-9 rounded-md object-cover"
+        alt=""
+      />
       <div className="min-w-0">
         <p className="text-sm font-semibold truncate">{title}</p>
-        {subtitle && <p className="text-xs text-slate-400 truncate">{subtitle}</p>}
+        {subtitle && (
+          <p className="text-xs text-slate-400 truncate">{subtitle}</p>
+        )}
       </div>
     </div>
   );
@@ -122,7 +142,9 @@ export default function SearchDropdown({
 
     return (
       <div className="mb-3">
-        <p className="text-xs font-bold uppercase mb-1 text-slate-500">{label}</p>
+        <p className="text-xs font-bold uppercase mb-1 text-slate-500">
+          {label}
+        </p>
         <div className="grid grid-cols-2 gap-2">
           {items.map((item) => (
             <ResultCard

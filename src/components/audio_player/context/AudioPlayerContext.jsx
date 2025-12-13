@@ -9,6 +9,7 @@ export function AudioPlayerProvider({ children }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLooping, setIsLooping] = useState(false);
   const [trackImage, setTrackImage] = useState(null);
+  console.log("AudioPlayerContext instance loaded");
 
   // Add one track safely (no duplication)
   const addTrackToPlaylist = (track) => {
@@ -40,7 +41,7 @@ export function AudioPlayerProvider({ children }) {
   };
 
   // ➤ New: play a single track (add if not exist, then play)
-  const playOrAddAndPlay = (track) => {
+const playOrAddAndPlay = (track) => {
   if (!track) return;
 
   const existsIndex = playlist.findIndex(
@@ -59,6 +60,7 @@ export function AudioPlayerProvider({ children }) {
   setCurrentTrack(track);     // ✅ ALWAYS THIS
   setIsPlaying(true);
 };
+
 
 
   // ➤ New: clear playlist + add multiple tracks + play first

@@ -6,13 +6,11 @@ import PlayerBar from "./PlayerBar";
 
 export default function AudioPlayer() {
   return (
-    <AudioPlayerProvider>
       <div className="min-h-screen bg-white dark:bg-slate-900 flex flex-col">
         <MenuBar />
         <div className="flex-1">
           <Albums />
         </div>
       </div>
-    </AudioPlayerProvider>
   );
 }
