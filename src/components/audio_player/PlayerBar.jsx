@@ -1,175 +1,214 @@
-// src/components/audio_player/components/PlayerBar.jsx
+// src/components/audio_player/PlayerBar.jsx
 import React, { useEffect, useRef, useState } from "react";
-import Hls from "hls.js";
-import { Repeat } from "lucide-react"; // 🔁 icon
+import API_BASE_URL from "../../config";
 import { useAudioPlayer } from "./context/AudioPlayerContext";
+import { Play, Pause, SkipBack, SkipForward, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronUp, ChevronDown } from "lucide-react";
+import TrackListDrawer from "./components/TrackListDrawer";
 
 export default function PlayerBar() {
+  const audioRef = useRef(null);
+
   const {
     currentTrack,
+    playlist,
+    setPlaylist,
     isPlaying,
+    setIsPlaying,
     playNext,
     playPrev,
-    setIsPlaying,
     isLooping,
-    toggleLoop,
   } = useAudioPlayer();
 
-  const audioRef = useRef(null);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [expanded, setExpanded] = useState(false);
 
-  /** 🎵 Load new track with HLS */
+  // Load new track
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
-
     const audio = audioRef.current;
-    let hls;
 
-    if (Hls.isSupported()) {
-      hls = new Hls();
-      hls.loadSource(currentTrack.playlistUrl);
-      hls.attachMedia(audio);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        audio.play().catch(() => {});
-        setIsPlaying(true);
-      });
-    } else if (audio.canPlayType("application/vnd.apple.mpegurl")) {
-      audio.src = currentTrack.playlistUrl;
-      audio.play().catch(() => {});
-      setIsPlaying(true);
-    }
+    audio.pause();
+    audio.src = "";
+    audio.load();
+    console.log("Loading track in PlayerBar.jsx: ", currentTrack);
+    const flacUrl = `${API_BASE_URL.RESOURCE_URL}/stream/flac/${currentTrack.id}`;
+    audio.src = flacUrl;
+    audio.load();
+    audio.play().catch(console.error);
 
     return () => {
-      if (hls) hls.destroy();
+      audio.pause();
+      audio.src = "";
+      audio.load();
     };
   }, [currentTrack]);
 
-  /** 🎚️ Track progress updates */
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    isPlaying ? audio.play().catch(console.error) : audio.pause();
+  }, [isPlaying]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const updateProgress = () => {
-      setProgress(audio.currentTime);
+      setCurrentTime(audio.currentTime);
       setDuration(audio.duration || 0);
-    };
-
-    const handleEnded = () => {
-      playNext();
-      if (isLooping && !currentTrack) {
-        // If playlist ended, start over
-        playNext();
-      }
+      setProgress((audio.currentTime / (audio.duration || 1)) * 100);
     };
 
     audio.addEventListener("timeupdate", updateProgress);
-    audio.addEventListener("ended", handleEnded);
+    return () => audio.removeEventListener("timeupdate", updateProgress);
+  }, []);
 
-    return () => {
-      audio.removeEventListener("timeupdate", updateProgress);
-      audio.removeEventListener("ended", handleEnded);
-    };
-  }, [currentTrack, playNext, isLooping]);
-
-  /** ▶️⏸️ Play / Pause toggle */
-  const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      audio.play().catch(() => {});
-      setIsPlaying(true);
-    }
+  const handleEnded = () => {
+    if (isLooping) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
+    } else playNext();
   };
 
-  /** 🕓 Seekbar move */
   const handleSeek = (e) => {
-    const newTime = e.target.value;
-    audioRef.current.currentTime = newTime;
-    setProgress(newTime);
+    const newProgress = Number(e.target.value);
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+    audio.currentTime = (newProgress / 100) * duration;
+    setProgress(newProgress);
   };
 
-  /** ⏱️ Format seconds to MM:SS */
-  const formatTime = (time) => {
-    if (isNaN(time)) return "0:00";
-    const min = Math.floor(time / 60);
-    const sec = Math.floor(time % 60).toString().padStart(2, "0");
-    return `${min}:${sec}`;
+  const formatTime = (secs) => {
+    if (!secs || isNaN(secs)) return "0:00";
+    const minutes = Math.floor(secs / 60);
+    const seconds = Math.floor(secs % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
-
-  if (!currentTrack) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-4 flex flex-col items-center shadow-lg">
-      <audio ref={audioRef} controls={false} />
+    <>
+      <audio
+        ref={audioRef}
+        onEnded={handleEnded}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        className="hidden"
+      />
 
-      {/* 🔘 Controls */}
-      <div className="flex items-center justify-center gap-4 mb-3">
-        <button
-          onClick={playPrev}
-          className="px-4 py-2 bg-yellow-400 text-black rounded-full shadow-md hover:bg-yellow-300 transition"
+      {/* MAIN PLAYER BAR */}
+      <div className="px-3 pt-1 pb-1 flex flex-col items-center border-t border-slate-700 select-none">
+        {/* Expand / collapse */}
+        <div
+          className="w-full flex justify-center cursor-pointer py-0.5"
+          onClick={() => setExpanded(!expanded)}
         >
-          ⏮️
-        </button>
+          {expanded ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+        </div>
 
-        <button
-          onClick={togglePlay}
-          className="px-4 py-2 bg-yellow-400 text-black rounded-full shadow-md hover:bg-yellow-300 transition"
-        >
-          {isPlaying ? "⏸️" : "▶️"}
-        </button>
+        {/* Time & Now Playing */}
+        <div className="w-full max-w-3xl flex justify-between items-center mb-0.5 px-1">
+          <span className="text-[10px] text-gray-400">
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </span>
+        </div>
 
-        <button
-          onClick={playNext}
-          className="px-4 py-2 bg-yellow-400 text-black rounded-full shadow-md hover:bg-yellow-300 transition"
-        >
-          ⏭️
-        </button>
+        {/* Title + Album */}
+        <div className="w-full max-w-3xl mb-1 flex justify-center text-center px-2">
+          <div className="max-w-[75%]">
+            <p className="truncate text-yellow-400 font-bold text-xs leading-tight">
+              {currentTrack?.title || "No track selected"}
+            </p>
+            <p className="truncate text-gray-300 text-[10px] leading-tight">
+              {currentTrack?.album_movie_show_title || "Unknown album"}
+            </p>
+          </div>
+        </div>
 
-        {/* 🔁 Loop Toggle Button */}
-        <button
-          onClick={toggleLoop}
-          title="Toggle Loop"
-          className={`px-3 py-2 rounded-full transition ${
-            isLooping
-              ? "bg-yellow-400 text-black shadow-md"
-              : "bg-gray-700 text-white hover:bg-yellow-300"
-          }`}
-        >
-          <Repeat size={20} />
-        </button>
-      </div>
-
-      {/* 📈 Seekbar */}
-      <div className="flex items-center w-full max-w-xl gap-2">
-        <span className="text-xs text-gray-300 w-10 text-right">
-          {formatTime(progress)}
-        </span>
-
+        {/* Progress Bar */}
         <input
           type="range"
           min="0"
-          max={duration || 0}
-          value={progress}
+          max="100"
           step="0.1"
+          value={progress}
           onChange={handleSeek}
-          className="flex-1 cursor-pointer accent-yellow-400"
+          className="w-full h-1 accent-yellow-500 rounded-lg appearance-none cursor-pointer bg-slate-700 mb-2"
         />
 
-        <span className="text-xs text-gray-300 w-10 text-left">
-          {formatTime(duration)}
-        </span>
+        {/* CONTROLS (compact mode) */}
+        <div className="flex items-center justify-center gap-6 pb-1">
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            whileHover={{ scale: 1.05 }}
+            onClick={playPrev}
+            className="p-1 hover:text-yellow-400"
+          >
+            <SkipBack size={22} />
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            whileHover={{ scale: 1.12 }}
+            animate={isPlaying ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+            transition={{ duration: 2, repeat: Infinity }}
+            onClick={() => setIsPlaying((p) => !p)}
+            className="bg-yellow-500 hover:bg-yellow-400 text-black rounded-full p-3 shadow-xl"
+          >
+            {isPlaying ? <Pause size={26} /> : <Play size={26} />}
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            whileHover={{ scale: 1.05 }}
+            onClick={playNext}
+            className="p-1 hover:text-yellow-400"
+          >
+            <SkipForward size={22} />
+          </motion.button>
+        </div>
       </div>
 
-      {/* 🎶 Track Info */}
-      <div className="text-sm mt-2 text-gray-300 truncate w-full text-center">
-        🎵 {currentTrack.title}{" "}
-        {currentTrack.artist ? `– ${currentTrack.artist}` : ""}
-      </div>
-    </div>
+      {/* Drawer */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            className="fixed bottom-24 left-0 right-0 bg-slate-800 text-white rounded-t-xl z-[60] shadow-2xl"
+            initial={{ opacity: 0, y: 300 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 300 }}
+            transition={{ type: "spring", stiffness: 120, damping: 14 }}
+            drag="y"
+            dragElastic={0.35}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 100) setExpanded(false);
+            }}
+          >
+            <div className="flex justify-end p-4">
+              <motion.button
+                onClick={() => setPlaylist([])}
+                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.1 }}
+                className="p-2 rounded-full bg-red-500 hover:bg-red-600 shadow-md flex items-center justify-center"
+              >
+                <Trash2 size={18} />
+              </motion.button>
+            </div>
+
+            <h3 className="font-bold text-lg mb-3 px-4 text-yellow-400">
+              Up Next ({playlist.length})
+            </h3>
+
+            <div className="max-h-[55vh] overflow-y-auto px-4 pb-6">
+              <TrackListDrawer />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
