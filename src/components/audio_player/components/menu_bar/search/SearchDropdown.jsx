@@ -116,7 +116,7 @@ export default function SearchDropdown({
     <div
       onClick={(e) => {
         e.stopPropagation();
-        handlePlay(item);
+        playOrAddAndPlay(item);
       }}
       className="p-2 flex gap-3 items-center rounded-lg
                  hover:bg-slate-200 dark:hover:bg-slate-700
