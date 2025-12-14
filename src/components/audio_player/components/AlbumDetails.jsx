@@ -7,7 +7,7 @@ export default function AlbumDetails() {
   const { albumName } = useParams();
   const [albumData, setAlbumData] = useState([]);
   const [albumArt, setAlbumArt] = useState("/default_album.png");
-  const { playTrackList, currentTrack, trackImage, setTrackImage } = useAudioPlayer();
+  const { playTrackList, currentTrack, trackImage, setTrackImage, playOrAddAndPlay } = useAudioPlayer();
 
   useEffect(() => {
     if (!albumName) return;
@@ -49,7 +49,8 @@ export default function AlbumDetails() {
   }, [albumData, albumArt]);
 
   const handlePlay = (index) => {
-    playTrackList(playlist, index);
+    // playTrackList(playlist, index);
+    playOrAddAndPlay  (playlist[index]);
   };
 
   return  (

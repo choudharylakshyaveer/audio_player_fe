@@ -2,9 +2,79 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import ApiService from "../../../../common/ApiService";
 import { fetchImageById } from "../../../../common/fetchImageById";
 import { useAudioPlayer } from "../../../context/AudioPlayerContext";
+
+/* --------------------------------------------------
+   Helpers
+-------------------------------------------------- */
+
+// Normalize playable track (must match GenericHolder / PlayerBar)
+function buildTrack(item) {
+  return {
+    id: String(item.id),
+    title: item.title || item.album_movie_show_title || "Unknown",
+    album_movie_show_title: item.album_movie_show_title || "",
+    artists: item.artists || [],
+    cover: item.image || "",
+  };
+}
+
+// Album already has base64 image from API
+function buildAlbumItem(item) {
+  return {
+    album: item.album,
+    image: item.attachedPicture
+      ? `data:image/jpeg;base64,${item.attachedPicture}`
+      : "/default_album.png",
+  };
+}
+
+/* --------------------------------------------------
+   UI atoms
+-------------------------------------------------- */
+
+function ResultCard({ image, title, subtitle, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      className="p-2 flex gap-3 items-center rounded-lg
+                 hover:bg-slate-200 dark:hover:bg-slate-700
+                 cursor-pointer transition"
+    >
+      <img
+        src={image}
+        className="w-9 h-9 rounded-md object-cover"
+        alt={title}
+      />
+      <div className="min-w-0">
+        <p className="text-sm font-semibold truncate">{title}</p>
+        {subtitle && (
+          <p className="text-xs text-slate-400 truncate">{subtitle}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Section({ label, children }) {
+  if (!children || children.length === 0) return null;
+
+  return (
+    <div className="mb-3">
+      <p className="text-xs font-bold uppercase mb-1 text-slate-500">
+        {label}
+      </p>
+      <div className="grid grid-cols-2 gap-2">{children}</div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------
+   Main component
+-------------------------------------------------- */
 
 export default function SearchDropdown({
   query = "",
@@ -12,21 +82,17 @@ export default function SearchDropdown({
   onClose = () => {},
   onShowFull = () => {},
 }) {
-  const ctx = useAudioPlayer();
-  const { playAllSelected } = useAudioPlayer();
-
-  console.log("SearchDropdown context:", ctx);
-
   const containerRef = useRef(null);
-  const { playOrAddAndPlay, playTrackList } = useAudioPlayer();
+  const navigate = useNavigate();
+  const { playOrAddAndPlay } = useAudioPlayer();
 
   const [loading, setLoading] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [data, setData] = useState({
     albums: [],
     artists: [],
     audioTracks: [],
   });
-  const [debouncedQuery, setDebouncedQuery] = useState(query);
 
   /* -------------------- Debounce -------------------- */
   useEffect(() => {
@@ -49,20 +115,26 @@ export default function SearchDropdown({
         const res = await ApiService.get(`/search?q=${debouncedQuery}`);
         if (cancelled) return;
 
+        // Albums → image already present
+        const albums = (res.albums || [])
+          .slice(0, 4)
+          .map(buildAlbumItem);
+
+        // Artists & Tracks → fetch image
         const enrich = async (item) => ({
           ...item,
           image: await fetchImageById(item.id),
         });
 
-        setData({
-          albums: await Promise.all((res.albums || []).slice(0, 4).map(enrich)),
-          artists: await Promise.all(
-            (res.artists || []).slice(0, 4).map(enrich)
-          ),
-          audioTracks: await Promise.all(
-            (res.audioTracks || []).slice(0, 6).map(enrich)
-          ),
-        });
+        const artists = await Promise.all(
+          (res.artists || []).slice(0, 4).map(enrich)
+        );
+
+        const audioTracks = await Promise.all(
+          (res.audioTracks || []).slice(0, 6).map(enrich)
+        );
+
+        setData({ albums, artists, audioTracks });
       } catch (e) {
         console.error(e);
       } finally {
@@ -82,7 +154,7 @@ export default function SearchDropdown({
       !containerRef.current.contains(e.target) &&
       onClose();
 
-    document.addEventListener("click", close);
+    document.addEventListener("mousedown", close);
     document.addEventListener(
       "keydown",
       (e) => e.key === "Escape" && onClose()
@@ -91,81 +163,28 @@ export default function SearchDropdown({
     return () => document.removeEventListener("mousedown", close);
   }, [visible]);
 
-  /* -------------------- PLAY (CRITICAL) -------------------- */
-  const handlePlay = (item) => {
-    if (!item?.id) return;
+  /* -------------------- Handlers -------------------- */
 
-    const track = {
-      id: String(item.id),
-      title: item.title || item.album_movie_show_title,
-      album_movie_show_title: item.album_movie_show_title || "",
-      artists: item.artists || [],
-      cover: item.image || "",
-    };
-
-    console.log("▶ SearchDropdown play:", track);
-
-    // 🔥 THIS sets playlist + currentIndex = 0
-    playAllSelected([track], 0);
-
+  const handlePlayTrack = (track) => {
+    playOrAddAndPlay(buildTrack(track));
     onClose();
   };
 
-  /* -------------------- Card -------------------- */
-  const ResultCard = ({ item, title, subtitle }) => (
-    <div
-      onClick={(e) => {
-        e.stopPropagation();
-        playOrAddAndPlay(item);
-      }}
-      className="p-2 flex gap-3 items-center rounded-lg
-                 hover:bg-slate-200 dark:hover:bg-slate-700
-                 cursor-pointer transition"
-    >
-      <img
-        src={item.image}
-        className="w-9 h-9 rounded-md object-cover"
-        alt=""
-      />
-      <div className="min-w-0">
-        <p className="text-sm font-semibold truncate">{title}</p>
-        {subtitle && (
-          <p className="text-xs text-slate-400 truncate">{subtitle}</p>
-        )}
-      </div>
-    </div>
-  );
+  const handleAlbumClick = (albumName) => {
+    if (!albumName) return;
+    onClose();
+    navigate(`/audio-player/generalList?type=ALBUM&albumName=${encodeURIComponent(albumName)}`);  };
 
-  /* -------------------- Section -------------------- */
-  const renderSection = (label, items, type) => {
-    if (!items.length) return null;
+  const handleArtistClick = (artistName) => {
+    console.log("handleArtistClick:", artistName);
+    if (!artistName) return;
+    onClose();
+    navigate(`/audio-player/generalList?type=COLUMN&columnName=artists&filterValue=${encodeURIComponent(artistName)}`);
 
-    return (
-      <div className="mb-3">
-        <p className="text-xs font-bold uppercase mb-1 text-slate-500">
-          {label}
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {items.map((item) => (
-            <ResultCard
-              key={item.id}
-              item={item}
-              title={
-                type === "audioTracks"
-                  ? item.title || item.album_movie_show_title
-                  : type === "albums"
-                  ? item.album
-                  : item.artists?.[0]
-              }
-              subtitle={type === "audioTracks" ? item.artists?.[0] : ""}
-            />
-          ))}
-        </div>
-      </div>
-    );
   };
 
   /* -------------------- Render -------------------- */
+
   return (
     <AnimatePresence>
       {visible && (
@@ -199,9 +218,39 @@ export default function SearchDropdown({
                 <p className="text-center text-sm">Loading…</p>
               ) : (
                 <>
-                  {renderSection("Albums", data.albums, "albums")}
-                  {renderSection("Artists", data.artists, "artists")}
-                  {renderSection("Tracks", data.audioTracks, "audioTracks")}
+                  <Section label="Albums">
+                    {data.albums.map((a) => (
+                      <ResultCard
+                        key={a.album}
+                        image={a.image}
+                        title={a.album}
+                        onClick={() => handleAlbumClick(a.album)}
+                      />
+                    ))}
+                  </Section>
+
+                  <Section label="Artists">
+                    {data.artists.map((a) => (
+                      <ResultCard
+                        key={a.id}
+                        image={a.image}
+                        title={a.artists?.[0]}
+                        onClick={() => handleArtistClick(a.artists?.[0])}
+                      />
+                    ))}
+                  </Section>
+
+                  <Section label="Tracks">
+                    {data.audioTracks.map((t) => (
+                      <ResultCard
+                        key={t.id}
+                        image={t.image}
+                        title={t.title || t.album_movie_show_title}
+                        subtitle={t.artists?.[0]}
+                        onClick={() => handlePlayTrack(t)}
+                      />
+                    ))}
+                  </Section>
                 </>
               )}
             </div>

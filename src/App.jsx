@@ -23,10 +23,10 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Navigate to="/audio-player" replace />} />
               <Route path="/audio-player" element={<AudioPlayer />} />
-              <Route
+              {/* <Route
                 path="/audio-player/albums/:albumName"
                 element={<AlbumDetails />}
-              />
+              /> */}
               <Route
                 path="/audio-player/generalList"
                 element={<GenericHolder />}

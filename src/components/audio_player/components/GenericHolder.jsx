@@ -38,6 +38,12 @@ export default function GenericHolder() {
   const playlistId = searchParams.get("playlistId");
   const albumName = searchParams.get("albumName");
 
+  console.log("GenericHolder type:", type);
+  console.log("GenericHolder columnName:", columnName);
+  console.log("GenericHolder filterValue:", filterValue);
+  console.log("GenericHolder playlistId:", playlistId);
+  console.log("GenericHolder albumName:", albumName);
+
   const startLongPress = (event, track) => {
     event.preventDefault();
     longPressTimer.current = setTimeout(() => {
@@ -76,6 +82,33 @@ export default function GenericHolder() {
 
   useEffect(() => {
     if (type === "ALBUM") return;
+
+    const fetchData = async () => {
+      try {
+        let response;
+        if (type === "COLUMN") {
+          response = await ApiService.get(`/column/${columnName}/${filterValue}`, {}, "RESOURCE");
+        } else if (type === "PLAYLIST") {
+          response = await ApiService.get(`/playlist/${playlistId}`, {}, "RESOURCE");
+        }
+
+        const data = response?.data || response || [];
+        const validTracks = Array.isArray(data) ? data : [data];
+        setTracks(validTracks);
+
+        validTracks.forEach(async (track) => {
+          const img = await fetchImageById(track.id);
+          setTrackImages((prev) => ({ ...prev, [track.id]: img }));
+        });
+      } catch (err) {
+        console.error("Error fetching tracks:", err);
+      }
+    };
+    fetchData();
+  }, [type, columnName, filterValue, playlistId]);
+
+  useEffect(() => {
+    if (type === "ARTIST") return;
 
     const fetchData = async () => {
       try {
