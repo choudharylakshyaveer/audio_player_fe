@@ -38,14 +38,8 @@ export default function GenericHolder() {
   const playlistId = searchParams.get("playlistId");
   const albumName = searchParams.get("albumName");
 
-  console.log("GenericHolder type:", type);
-  console.log("GenericHolder columnName:", columnName);
-  console.log("GenericHolder filterValue:", filterValue);
-  console.log("GenericHolder playlistId:", playlistId);
-  console.log("GenericHolder albumName:", albumName);
-
   const startLongPress = (event, track) => {
-    event.preventDefault();
+    event.stopPropagation();
     longPressTimer.current = setTimeout(() => {
       setLongPressTrack(track); // Open menu
     }, 550);
@@ -135,7 +129,6 @@ export default function GenericHolder() {
   }, [type, columnName, filterValue, playlistId]);
 
   const handlePlay = (track) => {
-    console.log("playOrAddAndPlay called with track:", track);
     if (!track) return;
     playOrAddAndPlay(track);
   };

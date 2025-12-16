@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import API_BASE_URL from "../../config";
 import { useAudioPlayer } from "./context/AudioPlayerContext";
-import { Play, Pause, SkipBack, SkipForward, Trash2 } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Trash2, Repeat } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import TrackListDrawer from "./components/TrackListDrawer";
@@ -11,15 +11,17 @@ export default function PlayerBar() {
   const audioRef = useRef(null);
 
   const {
-    currentTrack,
-    playlist,
-    setPlaylist,
-    isPlaying,
-    setIsPlaying,
-    playNext,
-    playPrev,
-    isLooping,
-  } = useAudioPlayer();
+  currentTrack,
+  playlist,
+  setPlaylist,
+  isPlaying,
+  setIsPlaying,
+  playNext,
+  playPrev,
+  isLooping,
+  toggleLoop,
+} = useAudioPlayer();
+
 
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -34,7 +36,6 @@ export default function PlayerBar() {
     audio.pause();
     audio.src = "";
     audio.load();
-    console.log("Loading track in PlayerBar.jsx: ", currentTrack);
     const flacUrl = `${API_BASE_URL.RESOURCE_URL}/stream/flac/${currentTrack.id}`;
     audio.src = flacUrl;
     audio.load();
@@ -140,36 +141,53 @@ export default function PlayerBar() {
         />
 
         {/* CONTROLS (compact mode) */}
-        <div className="flex items-center justify-center gap-6 pb-1">
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            whileHover={{ scale: 1.05 }}
-            onClick={playPrev}
-            className="p-1 hover:text-yellow-400"
-          >
-            <SkipBack size={22} />
-          </motion.button>
+<div className="flex items-center justify-center gap-6 pb-1">
+  {/* Loop */}
+  <motion.button
+  whileTap={{ scale: 0.9 }}
+  whileHover={{ scale: 1.05 }}
+  onClick={toggleLoop}
+  className={`p-1 rounded transition
+    ${
+      isLooping
+        ? "text-yellow-400"
+        : "text-gray-400 hover:text-yellow-400"
+    }`}
+  title={isLooping ? "Loop ON" : "Loop OFF"}
+>
+  <Repeat size={18} />
+</motion.button>
 
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            whileHover={{ scale: 1.12 }}
-            animate={isPlaying ? { scale: [1, 1.1, 1] } : { scale: 1 }}
-            transition={{ duration: 2, repeat: Infinity }}
-            onClick={() => setIsPlaying((p) => !p)}
-            className="bg-yellow-500 hover:bg-yellow-400 text-black rounded-full p-3 shadow-xl"
-          >
-            {isPlaying ? <Pause size={26} /> : <Play size={26} />}
-          </motion.button>
+  <motion.button
+    whileTap={{ scale: 0.88 }}
+    whileHover={{ scale: 1.05 }}
+    onClick={playPrev}
+    className="p-1 hover:text-yellow-400"
+  >
+    <SkipBack size={22} />
+  </motion.button>
 
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            whileHover={{ scale: 1.05 }}
-            onClick={playNext}
-            className="p-1 hover:text-yellow-400"
-          >
-            <SkipForward size={22} />
-          </motion.button>
-        </div>
+  <motion.button
+    whileTap={{ scale: 0.88 }}
+    whileHover={{ scale: 1.12 }}
+    animate={isPlaying ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+    transition={{ duration: 2, repeat: Infinity }}
+    onClick={() => setIsPlaying((p) => !p)}
+    className="bg-yellow-500 hover:bg-yellow-400 text-black rounded-full p-3 shadow-xl"
+  >
+    {isPlaying ? <Pause size={26} /> : <Play size={26} />}
+  </motion.button>
+
+  <motion.button
+    whileTap={{ scale: 0.88 }}
+    whileHover={{ scale: 1.05 }}
+    onClick={playNext}
+    className="p-1 hover:text-yellow-400"
+  >
+    <SkipForward size={22} />
+  </motion.button>
+</div>
+
       </div>
 
       {/* Drawer */}

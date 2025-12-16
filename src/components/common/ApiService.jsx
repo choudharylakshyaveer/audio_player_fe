@@ -13,7 +13,6 @@ const ApiService = {
       // Select base URL based on type
       const baseUrl = type === "AUTH" ? API_BASE_URL.AUTH_URL : API_BASE_URL.RESOURCE_URL;
       const fullUrl = `${baseUrl}${url}`;
-      console.log(`Making ${options.method || "GET"} request to:`, fullUrl);
 
       const response = await fetch(fullUrl, {
         headers: { ...defaultHeaders, ...(options.headers || {}) },
@@ -32,7 +31,7 @@ const ApiService = {
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
         var jsonResponse = await response.json();
-        console.log("Response JSON:", jsonResponse);
+        // console.log("Response JSON:", jsonResponse);
         return jsonResponse;
       }
         else {

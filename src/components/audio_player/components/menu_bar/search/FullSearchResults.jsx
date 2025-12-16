@@ -41,7 +41,6 @@ export default function FullSearchReslts({
       setLoading(true);
 
       try {
-        console.log("Fetching search results for:", debouncedQuery);
         const res = await ApiService.get(`/search?q=${encodeURIComponent(debouncedQuery)}`);
 
 

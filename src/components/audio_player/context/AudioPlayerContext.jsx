@@ -9,7 +9,6 @@ export function AudioPlayerProvider({ children }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLooping, setIsLooping] = useState(false);
   const [trackImage, setTrackImage] = useState(null);
-  console.log("AudioPlayerContext instance loaded");
 
   // Add one track safely (no duplication)
   const addTrackToPlaylist = (track) => {

@@ -8,7 +8,6 @@ import {
 import AudioPlayer from "./components/audio_player/AudioPlayer";
 import VideoPlayer from "./components/video_player/VideoPlayer";
 import { AudioPlayerProvider } from "./components/audio_player/context/AudioPlayerContext";
-import AlbumDetails from "./components/audio_player/components/AlbumDetails";
 import PlayerBar from "./components/audio_player/PlayerBar";
 import GenericHolder from "./components/audio_player/components/GenericHolder";
 import { motion } from "framer-motion";
@@ -23,10 +22,6 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Navigate to="/audio-player" replace />} />
               <Route path="/audio-player" element={<AudioPlayer />} />
-              {/* <Route
-                path="/audio-player/albums/:albumName"
-                element={<AlbumDetails />}
-              /> */}
               <Route
                 path="/audio-player/generalList"
                 element={<GenericHolder />}
