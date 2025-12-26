@@ -9,38 +9,39 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
 
   const fadeOutToast = () => setTimeout(() => setToast(null), 2500);
 
-  const handleAuth = async () => {
-    try {
-      if (isLogin) {
-        const token = await ApiService.post(
-          "/login",
-          { username, password },
-          { rawResponse: true },
-          "AUTH"
-        );
+const handleAuth = async () => {
+  try {
+    if (isLogin) {
+      const response = await ApiService.post(
+        "/login",
+        { username, password },
+        { type: "AUTH" }
+      );
 
-        sessionStorage.setItem("authToken", token);
-        setToast({ type: "success", message: "🎉 Login Successful" });
-        fadeOutToast();
-        onLoginSuccess(token);
-      } else {
-        await ApiService.post(
-          "/register",
-          { username, password },
-          { rawResponse: true },
-          "AUTH"
-        );
+      const token = response.token ?? response;
 
-        setToast({ type: "success", message: "🚀 Signup successful! Please login" });
-        fadeOutToast();
-        setIsLogin(true);
-      }
-    } catch (err) {
-      console.error(err);
-      setToast({ type: "error", message: "❌ Authentication failed" });
+      sessionStorage.setItem("authToken", token);
+      setToast({ type: "success", message: "🎉 Login Successful" });
       fadeOutToast();
+      onLoginSuccess(token);
+    } else {
+      await ApiService.post(
+        "/register",
+        { username, password },
+        { type: "AUTH" }
+      );
+
+      setToast({ type: "success", message: "🚀 Signup successful! Please login" });
+      fadeOutToast();
+      setIsLogin(true);
     }
-  };
+  } catch (err) {
+    console.error(err);
+    setToast({ type: "error", message: "❌ Authentication failed" });
+    fadeOutToast();
+  }
+};
+
 
   return (
   <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-[9999]">

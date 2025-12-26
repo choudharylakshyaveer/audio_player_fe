@@ -3,7 +3,7 @@ import ApiService from "./ApiService";
 
 export async function fetchImageById(id) {
   try {
-    const res = await ApiService.get(`/image/${id}`, {}, "RESOURCE");
+    const res = await ApiService.get(`/image/${id}`);
     const base64 = typeof res === "string" ? res : res?.image;
 
     return base64

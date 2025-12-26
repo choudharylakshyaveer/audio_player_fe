@@ -20,7 +20,10 @@ export default function App() {
         <div className="min-h-screen flex flex-col bg-gray-50 relative">
           <div className="flex-1 relative">
             <Routes>
-              <Route path="/" element={<Navigate to="/audio-player" replace />} />
+              <Route
+                path="/"
+                element={<Navigate to="/audio-player" replace />}
+              />
               <Route path="/audio-player" element={<AudioPlayer />} />
               <Route
                 path="/audio-player/generalList"
@@ -29,9 +32,11 @@ export default function App() {
               <Route path="/video-player" element={<VideoPlayer />} />
               <Route
                 path="*"
-                element={<h2 className="p-6 text-center text-red-500">
-                  404 — The tune you’re looking for doesn’t exist.
-                </h2>}
+                element={
+                  <h2 className="p-6 text-center text-red-500">
+                    404 — The tune you’re looking for doesn’t exist.
+                  </h2>
+                }
               />
             </Routes>
 
@@ -57,20 +62,20 @@ function FloatingPlayerBar() {
 
   return (
     <motion.div
-  initial={{ y: 120, opacity: 0 }}
-  animate={{
-    y: 0,
-    opacity: 1,
-    height: expanded ? 300 : 140, // enough to show play button
-  }}
-  transition={{ type: "spring", stiffness: 110, damping: 18 }}
-  className="fixed bottom-0 left-0 right-0 z-50
+      initial={{ y: 120, opacity: 0 }}
+      animate={{
+        y: 0,
+        opacity: 1,
+        height: expanded ? 300 : 140, // enough to show play button
+      }}
+      transition={{ type: "spring", stiffness: 110, damping: 18 }}
+      className="fixed bottom-0 left-0 right-0 z-50
     bg-slate-900/70 backdrop-blur-lg backdrop-saturate-150
     rounded-t-3xl shadow-[0_0_40px_rgba(0,0,0,0.7)]
     border-t border-white/10
   "
->
-  <PlayerBar />
-</motion.div>
+    >
+      <PlayerBar />
+    </motion.div>
   );
 }

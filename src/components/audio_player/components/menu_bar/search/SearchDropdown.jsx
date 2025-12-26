@@ -118,7 +118,10 @@ function Section({ label, items, renderItem }) {
 -------------------------------------------------- */
 
 async function fetchSearchData(query) {
-  const res = await ApiService.get(`/search?q=${query}`);
+  const res = await ApiService.get("/search", {
+  queryParams: { q: query }
+});
+
 
   const enrichTrack = async (item) => ({
     ...item,

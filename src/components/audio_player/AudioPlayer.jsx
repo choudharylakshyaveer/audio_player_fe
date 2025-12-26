@@ -10,7 +10,11 @@ export default function AudioPlayer() {
         <MenuBar />
         <div className="flex-1">
           <Albums />
+          <div>
+          
         </div>
+        </div>
+        
       </div>
   );
 }

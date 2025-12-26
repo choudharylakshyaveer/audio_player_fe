@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import AuthModal from "../../../auth/AuthModal";
 import API_BASE_URL from "../../../../config";
 
-import FullSearchResults from "./search/FullSearchResults";
 import SearchDropdown from "./search/SearchDropdown";
 
 export default function MenuBar() {
@@ -162,24 +161,16 @@ export default function MenuBar() {
 
       {/* SEARCH DROPDOWN */}
       <SearchDropdown
-  query={query}
-  visible={searchActive && !showFullResults}
-  onClose={() => setSearchActive(false)}
-  onShowFull={() => {
-    setShowFullResults(true);
-    setSearchActive(false);
-  }}
-/>
+        query={query}
+        visible={searchActive && !showFullResults}
+        onClose={() => setSearchActive(false)}
+        onShowFull={() => {
+          setShowFullResults(true);
+          setSearchActive(false);
+        }}
+      />
 
-<AnimatePresence>
-  {showFullResults && (
-    <FullSearchResults
-      visible={showFullResults}
-      query={query}
-      onClose={() => setShowFullResults(false)}
-    />
-  )}
-</AnimatePresence>
+      
 
       {/* AUTH MODAL */}
       {showAuthModal && (

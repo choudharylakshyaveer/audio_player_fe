@@ -7,10 +7,11 @@ export default function PlaylistDialog({ trackId, onClose }) {
   const [newPlaylist, setNewPlaylist] = useState("");
 
   useEffect(() => {
-    ApiService.get("/playlist", {}, "RESOURCE")
-      .then(setPlaylists)
-      .catch(() => setPlaylists([]));
-  }, []);
+  ApiService.get("/playlist")
+    .then(setPlaylists)
+    .catch(() => setPlaylists([]));
+}, []);
+
 
   const handleAddToExisting = (playlistId) => {
     ApiService.post(`/playlist/${playlistId}/addTrack/${trackId}`, {}, "RESOURCE")
