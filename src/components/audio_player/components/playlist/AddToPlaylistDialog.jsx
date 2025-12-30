@@ -7,22 +7,34 @@ export default function PlaylistDialog({ trackId, onClose }) {
   const [newPlaylist, setNewPlaylist] = useState("");
 
   useEffect(() => {
-    ApiService.get("/playlist", {}, "RESOURCE")
+    ApiService.get("/playlist")
       .then(setPlaylists)
       .catch(() => setPlaylists([]));
   }, []);
 
   const handleAddToExisting = (playlistId) => {
-    ApiService.post(`/playlist/${playlistId}/addTrack/${trackId}`, {}, "RESOURCE")
+    ApiService.post(
+      `/playlist/${playlistId}/addTrack/${trackId}`,
+      {},
+      "RESOURCE"
+    )
       .then(() => onClose())
       .catch((err) => console.error("Failed to add track:", err));
   };
 
   const handleCreateAndAdd = () => {
     if (!newPlaylist.trim()) return;
-    ApiService.post(`/playlist?name=${encodeURIComponent(newPlaylist)}`, {}, "RESOURCE")
+    ApiService.post(
+      `/playlist?name=${encodeURIComponent(newPlaylist)}`,
+      {},
+      "RESOURCE"
+    )
       .then((res) =>
-        ApiService.post(`/playlist/${res.id}/addTrack/${trackId}`, {}, "RESOURCE")
+        ApiService.post(
+          `/playlist/${res.id}/addTrack/${trackId}`,
+          {},
+          "RESOURCE"
+        )
       )
       .then(() => onClose())
       .catch((err) => console.error("Failed to create playlist:", err));

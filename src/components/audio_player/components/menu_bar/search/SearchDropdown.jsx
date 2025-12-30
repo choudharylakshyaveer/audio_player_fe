@@ -8,10 +8,9 @@ import { fetchImageById } from "../../../../common/fetchImageById";
 import { useAudioPlayer } from "../../../context/AudioPlayerContext";
 
 /* --------------------------------------------------
-   Helpers
+   Helpers (unchanged logic)
 -------------------------------------------------- */
 
-// Normalize playable track (must match GenericHolder / PlayerBar)
 function buildTrack(item) {
   return {
     id: String(item.id),
@@ -22,7 +21,6 @@ function buildTrack(item) {
   };
 }
 
-// Album already has base64 image from API
 function buildAlbumItem(item) {
   return {
     album: item.album,
@@ -30,6 +28,40 @@ function buildAlbumItem(item) {
       ? `data:image/jpeg;base64,${item.attachedPicture}`
       : "/default_album.png",
   };
+}
+
+/* --------------------------------------------------
+   Reusable hooks
+-------------------------------------------------- */
+
+function useDebounce(value, delay = 250) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+
+  return debounced;
+}
+
+function useOutsideClick(ref, enabled, onClose) {
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handler = (e) =>
+      ref.current && !ref.current.contains(e.target) && onClose();
+
+    const esc = (e) => e.key === "Escape" && onClose();
+
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("keydown", esc);
+
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [enabled, onClose, ref]);
 }
 
 /* --------------------------------------------------
@@ -44,13 +76,24 @@ function ResultCard({ image, title, subtitle, onClick }) {
                  hover:bg-slate-200 dark:hover:bg-slate-700
                  cursor-pointer transition"
     >
-      <img
-        src={image}
-        className="w-9 h-9 rounded-md object-cover"
-        alt={title}
-      />
+      {image ? (
+        <img
+          src={image}
+          className="w-9 h-9 rounded-md object-cover"
+          alt={title}
+        />
+      ) : (
+        <div
+          className="w-9 h-9 rounded-md bg-slate-300 dark:bg-slate-600
+                  flex items-center justify-center text-xs font-bold"
+        >
+          {title?.[0]}
+        </div>
+      )}
+
       <div className="min-w-0">
-        <p className="text-sm font-semibold truncate">{title}</p>
+        {title && <p className="text-sm font-semibold truncate">{title}</p>}
+
         {subtitle && (
           <p className="text-xs text-slate-400 truncate">{subtitle}</p>
         )}
@@ -59,17 +102,42 @@ function ResultCard({ image, title, subtitle, onClick }) {
   );
 }
 
-function Section({ label, children }) {
-  if (!children || children.length === 0) return null;
+function Section({ label, items, renderItem }) {
+  if (!items || items.length === 0) return null;
 
   return (
     <div className="mb-3">
-      <p className="text-xs font-bold uppercase mb-1 text-slate-500">
-        {label}
-      </p>
-      <div className="grid grid-cols-2 gap-2">{children}</div>
+      <p className="text-xs font-bold uppercase mb-1 text-slate-500">{label}</p>
+      <div className="grid grid-cols-2 gap-2">{items.map(renderItem)}</div>
     </div>
   );
+}
+
+/* --------------------------------------------------
+   Data fetcher
+-------------------------------------------------- */
+
+async function fetchSearchData(query) {
+  const res = await ApiService.get("/search", {
+  queryParams: { q: query }
+});
+
+
+  const enrichTrack = async (item) => ({
+    ...item,
+    image: await fetchImageById(item.id),
+  });
+
+  return {
+    albums: (res.albums || []).slice(0, 4).map(buildAlbumItem),
+
+    // ✅ artists are strings
+    artists: (res.artists || []).slice(0, 6),
+
+    audioTracks: await Promise.all(
+      (res.audioTracks || []).slice(0, 6).map(enrichTrack)
+    ),
+  };
 }
 
 /* --------------------------------------------------
@@ -86,19 +154,15 @@ export default function SearchDropdown({
   const navigate = useNavigate();
   const { playOrAddAndPlay } = useAudioPlayer();
 
+  const debouncedQuery = useDebounce(query);
   const [loading, setLoading] = useState(false);
-  const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [data, setData] = useState({
     albums: [],
     artists: [],
     audioTracks: [],
   });
 
-  /* -------------------- Debounce -------------------- */
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(query), 250);
-    return () => clearTimeout(t);
-  }, [query]);
+  useOutsideClick(containerRef, visible, onClose);
 
   /* -------------------- Fetch -------------------- */
   useEffect(() => {
@@ -112,29 +176,8 @@ export default function SearchDropdown({
     (async () => {
       setLoading(true);
       try {
-        const res = await ApiService.get(`/search?q=${debouncedQuery}`);
-        if (cancelled) return;
-
-        // Albums → image already present
-        const albums = (res.albums || [])
-          .slice(0, 4)
-          .map(buildAlbumItem);
-
-        // Artists & Tracks → fetch image
-        const enrich = async (item) => ({
-          ...item,
-          image: await fetchImageById(item.id),
-        });
-
-        const artists = await Promise.all(
-          (res.artists || []).slice(0, 4).map(enrich)
-        );
-
-        const audioTracks = await Promise.all(
-          (res.audioTracks || []).slice(0, 6).map(enrich)
-        );
-
-        setData({ albums, artists, audioTracks });
+        const result = await fetchSearchData(debouncedQuery);
+        if (!cancelled) setData(result);
       } catch (e) {
         console.error(e);
       } finally {
@@ -145,42 +188,29 @@ export default function SearchDropdown({
     return () => (cancelled = true);
   }, [debouncedQuery]);
 
-  /* -------------------- Outside click -------------------- */
-  useEffect(() => {
-    if (!visible) return;
-
-    const close = (e) =>
-      containerRef.current &&
-      !containerRef.current.contains(e.target) &&
-      onClose();
-
-    document.addEventListener("mousedown", close);
-    document.addEventListener(
-      "keydown",
-      (e) => e.key === "Escape" && onClose()
-    );
-
-    return () => document.removeEventListener("mousedown", close);
-  }, [visible]);
-
   /* -------------------- Handlers -------------------- */
 
-  const handlePlayTrack = (track) => {
+  const playTrack = (track) => {
     playOrAddAndPlay(buildTrack(track));
     onClose();
   };
 
-  const handleAlbumClick = (albumName) => {
-    if (!albumName) return;
+  const openAlbum = (albumName) => {
     onClose();
-    navigate(`/audio-player/generalList?type=ALBUM&albumName=${encodeURIComponent(albumName)}`);  };
+    navigate(
+      `/audio-player/generalList?type=ALBUM&albumName=${encodeURIComponent(
+        albumName
+      )}`
+    );
+  };
 
-  const handleArtistClick = (artistName) => {
-    console.log("handleArtistClick:", artistName);
-    if (!artistName) return;
+  const openArtist = (artistName) => {
     onClose();
-    navigate(`/audio-player/generalList?type=COLUMN&columnName=artists&filterValue=${encodeURIComponent(artistName)}`);
-
+    navigate(
+      `/audio-player/generalList?type=COLUMN&columnName=artists&filterValue=${encodeURIComponent(
+        artistName
+      )}`
+    );
   };
 
   /* -------------------- Render -------------------- */
@@ -218,39 +248,44 @@ export default function SearchDropdown({
                 <p className="text-center text-sm">Loading…</p>
               ) : (
                 <>
-                  <Section label="Albums">
-                    {data.albums.map((a) => (
+                  <Section
+                    label="Albums"
+                    items={data.albums}
+                    renderItem={(a) => (
                       <ResultCard
                         key={a.album}
                         image={a.image}
                         title={a.album}
-                        onClick={() => handleAlbumClick(a.album)}
+                        onClick={() => openAlbum(a.album)}
                       />
-                    ))}
-                  </Section>
+                    )}
+                  />
 
-                  <Section label="Artists">
-                    {data.artists.map((a) => (
+                  <Section
+                    label="Artists"
+                    items={data.artists}
+                    renderItem={(artist) => (
                       <ResultCard
-                        key={a.id}
-                        image={a.image}
-                        title={a.artists?.[0]}
-                        onClick={() => handleArtistClick(a.artists?.[0])}
+                        key={artist}
+                        title={artist}
+                        onClick={() => openArtist(artist)}
                       />
-                    ))}
-                  </Section>
+                    )}
+                  />
 
-                  <Section label="Tracks">
-                    {data.audioTracks.map((t) => (
+                  <Section
+                    label="Tracks"
+                    items={data.audioTracks}
+                    renderItem={(t) => (
                       <ResultCard
                         key={t.id}
                         image={t.image}
                         title={t.title || t.album_movie_show_title}
                         subtitle={t.artists?.[0]}
-                        onClick={() => handlePlayTrack(t)}
+                        onClick={() => playTrack(t)}
                       />
-                    ))}
-                  </Section>
+                    )}
+                  />
                 </>
               )}
             </div>

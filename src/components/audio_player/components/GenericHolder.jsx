@@ -37,15 +37,21 @@ export default function GenericHolder() {
   const filterValue = searchParams.get("filterValue");
   const playlistId = searchParams.get("playlistId");
   const albumName = searchParams.get("albumName");
-
-  console.log("GenericHolder type:", type);
-  console.log("GenericHolder columnName:", columnName);
-  console.log("GenericHolder filterValue:", filterValue);
-  console.log("GenericHolder playlistId:", playlistId);
-  console.log("GenericHolder albumName:", albumName);
+  console.log(
+    "In GenericHolder.jsx, type: " +
+      type +
+      ", columnName: " +
+      columnName +
+      ", filterValue: " +
+      filterValue +
+      ", playlistId: " +
+      playlistId +
+      ", albumName: " +
+      albumName
+  );
 
   const startLongPress = (event, track) => {
-    event.preventDefault();
+    event.stopPropagation();
     longPressTimer.current = setTimeout(() => {
       setLongPressTrack(track); // Open menu
     }, 550);
@@ -65,77 +71,77 @@ export default function GenericHolder() {
   //   }
   // };
 
-  useEffect(() => {
-    if (type === "ALBUM" && albumName) {
-      ApiService.get(`/albums/${albumName}`, {}, "RESOURCE")
-        .then(async (res) => {
-          const data = Array.isArray(res) ? res : res?.tracks || [];
-          setTracks(data);
-          if (data.length > 0) {
-            const img = await fetchImageById(data[0].id);
-            setAlbumArt(img);
-          }
-        })
-        .catch(() => setTracks([]));
+  // useEffect(() => {
+  //   if (type === "ALBUM" && albumName) {
+  //     ApiService.get("/albums/{albumName}", {
+  //       pathParams: { albumName },
+  //     })
+  //       .then(async (res) => {
+  //         const data = Array.isArray(res) ? res : res?.tracks || [];
+  //         setTracks(data);
+  //         if (data.length > 0) {
+  //           console.log("data[0].id : " + data[0].id);
+  //           const img = await fetchImageById(data[0].id);
+  //           setAlbumArt(img);
+  //         }
+  //       })
+  //       .catch(() => setTracks([]));
+  //   }
+  // }, [type, albumName]);
+
+ useEffect(() => {
+  if (!type) return;
+
+  const fetchData = async () => {
+    try {
+      let response = [];
+
+      if (type === "ALBUM" && albumName) {
+       response = await ApiService.get("/albums", {
+    queryParams: { albumName },
+  });
+        response = response?.tracks || response || [];
+      }
+
+      if (type === "COLUMN" && columnName) {
+        try {
+          response = await ApiService.get("/column", {
+            queryParams: {
+              columnName: columnName,
+              value: filterValue,
+            },
+          });
+        } catch (error) {
+          console.error("Failed to fetch column tracks:", error);
+          response = [];
+        }
+      }
+
+      if (type === "PLAYLIST" && playlistId) {
+        response = await ApiService.get("/playlist/{playlistId}", {
+          pathParams: { playlistId },
+        });
+        response = response?.data || response || [];
+      }
+
+      const tracks = Array.isArray(response) ? response : [];
+      setTracks(tracks);
+
+      tracks.forEach(async (track) => {
+        if (!track?.id) return;
+        const img = await fetchImageById(track.id);
+        setTrackImages((prev) => ({ ...prev, [track.id]: img }));
+      });
+    } catch (e) {
+      console.error("GenericHolder fetch error", e);
+      setTracks([]);
     }
-  }, [type, albumName]);
+  };
 
-  useEffect(() => {
-    if (type === "ALBUM") return;
-
-    const fetchData = async () => {
-      try {
-        let response;
-        if (type === "COLUMN") {
-          response = await ApiService.get(`/column/${columnName}/${filterValue}`, {}, "RESOURCE");
-        } else if (type === "PLAYLIST") {
-          response = await ApiService.get(`/playlist/${playlistId}`, {}, "RESOURCE");
-        }
-
-        const data = response?.data || response || [];
-        const validTracks = Array.isArray(data) ? data : [data];
-        setTracks(validTracks);
-
-        validTracks.forEach(async (track) => {
-          const img = await fetchImageById(track.id);
-          setTrackImages((prev) => ({ ...prev, [track.id]: img }));
-        });
-      } catch (err) {
-        console.error("Error fetching tracks:", err);
-      }
-    };
-    fetchData();
-  }, [type, columnName, filterValue, playlistId]);
-
-  useEffect(() => {
-    if (type === "ARTIST") return;
-
-    const fetchData = async () => {
-      try {
-        let response;
-        if (type === "COLUMN") {
-          response = await ApiService.get(`/column/${columnName}/${filterValue}`, {}, "RESOURCE");
-        } else if (type === "PLAYLIST") {
-          response = await ApiService.get(`/playlist/${playlistId}`, {}, "RESOURCE");
-        }
-
-        const data = response?.data || response || [];
-        const validTracks = Array.isArray(data) ? data : [data];
-        setTracks(validTracks);
-
-        validTracks.forEach(async (track) => {
-          const img = await fetchImageById(track.id);
-          setTrackImages((prev) => ({ ...prev, [track.id]: img }));
-        });
-      } catch (err) {
-        console.error("Error fetching tracks:", err);
-      }
-    };
-    fetchData();
-  }, [type, columnName, filterValue, playlistId]);
+  fetchData();
+}, [type, columnName, filterValue, playlistId, albumName]);
 
   const handlePlay = (track) => {
-    console.log("playOrAddAndPlay called with track:", track);
     if (!track) return;
     playOrAddAndPlay(track);
   };
@@ -276,5 +282,4 @@ export default function GenericHolder() {
       </div>
     </>
   );
-  
 }

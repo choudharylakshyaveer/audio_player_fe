@@ -27,6 +27,8 @@ export default function Albums() {
     navigate(`/audio-player/generalList?type=ALBUM&albumName=${encodeURIComponent(album.album)}`);
 
   };
+
+  
   const handleElementClick = (columnName,filterValue ) => {
   navigate(`/audio-player/generalList?type=COLUMN&columnName=${columnName}&filterValue=${encodeURIComponent(filterValue)}`);
 
