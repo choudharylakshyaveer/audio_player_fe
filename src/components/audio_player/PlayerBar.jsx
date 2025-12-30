@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import TrackListDrawer from "./components/TrackListDrawer";
+import ApiService from "../common/ApiService";
 
 export default function PlayerBar() {
   const audioRef = useRef(null);
@@ -33,21 +34,48 @@ export default function PlayerBar() {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [expanded, setExpanded] = useState(false);
+  const refreshingRef = useRef(false);
 
   // Load new track
   useEffect(() => {
     if (!currentTrack || !audioRef.current) return;
-    const audio = audioRef.current;
 
-    audio.pause();
-    audio.src = "";
-    audio.load();
-    const flacUrl = `${API_BASE_URL.RESOURCE_URL}/stream/flac/${currentTrack.id}`;
-    audio.src = flacUrl;
-    audio.load();
-    audio.play().catch(console.error);
+    const audio = audioRef.current;
+    let cancelled = false;
+
+    const loadTrack = async () => {
+      try {
+        audio.pause();
+        audio.src = "";
+        audio.load();
+
+        // 1️⃣ Request short-lived stream token (JWT is sent via fetch)
+        const { token } = await ApiService.post(
+          `/stream/token/${currentTrack.id}`,
+          null,
+          { type: "RESOURCE" }
+        );
+
+        if (cancelled) return;
+
+        // 2️⃣ Attach token to stream URL
+        const flacUrl =
+          `${API_BASE_URL.RESOURCE_URL}/stream/flac/${currentTrack.id}` +
+          `?token=${encodeURIComponent(token)}`;
+
+        audio.src = flacUrl;
+        audio.load();
+        await audio.play();
+      } catch (err) {
+        console.error("Failed to load track", err);
+      }
+    };
+
+    loadTrack();
 
     return () => {
+      cancelled = true;
+      refreshingRef.current = false;
       audio.pause();
       audio.src = "";
       audio.load();
@@ -73,6 +101,39 @@ export default function PlayerBar() {
     audio.addEventListener("timeupdate", updateProgress);
     return () => audio.removeEventListener("timeupdate", updateProgress);
   }, []);
+
+  const handleStreamError = async () => {
+    if (refreshingRef.current) return;
+
+    const audio = audioRef.current;
+    if (!audio || !currentTrack) return;
+
+    console.warn("Stream error detected");
+
+    refreshingRef.current = true;
+    const resumeTime = audio.currentTime || 0;
+
+    try {
+      const { token } = await ApiService.post(
+        `/stream/token/${currentTrack.id}`,
+        null,
+        { type: "RESOURCE" }
+      );
+
+      audio.src =
+        `${API_BASE_URL.RESOURCE_URL}/stream/flac/${currentTrack.id}` +
+        `?token=${encodeURIComponent(token)}`;
+
+      audio.load();
+      audio.currentTime = resumeTime;
+      await audio.play();
+    } catch (err) {
+      console.error("Token refresh failed", err);
+      setIsPlaying(false);
+    } finally {
+      refreshingRef.current = false;
+    }
+  };
 
   const handleEnded = () => {
     if (isLooping) {
@@ -103,6 +164,7 @@ export default function PlayerBar() {
         onEnded={handleEnded}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
+        onError={handleStreamError}
         className="hidden"
       />
 
