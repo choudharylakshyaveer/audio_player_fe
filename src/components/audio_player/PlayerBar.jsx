@@ -179,23 +179,25 @@ export default function PlayerBar() {
         </div>
 
         {/* Time & Now Playing */}
-        <div className="w-full max-w-3xl flex justify-between items-center mb-0.5 px-1">
-          <span className="text-[10px] text-gray-400">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </span>
-        </div>
+<div className="w-full max-w-3xl flex justify-between items-center mb-0.5 px-1">
+  <span className="text-[10px] text-gray-400">
+    {formatTime(currentTime)} / {formatTime(duration)}
+  </span>
+</div>
 
-        {/* Title + Album */}
-        <div className="w-full max-w-3xl mb-1 flex justify-center text-center px-2">
-          <div className="max-w-[75%]">
-            <p className="truncate text-yellow-400 font-bold text-xs leading-tight">
-              {currentTrack?.title || "No track selected"}
-            </p>
-            <p className="truncate text-gray-300 text-[10px] leading-tight">
-              {currentTrack?.album_movie_show_title || "Unknown album"}
-            </p>
-          </div>
-        </div>
+{/* Title + Album (Side by Side) */}
+<div className="w-full max-w-3xl mb-1 flex items-center justify-between px-1 gap-2">
+  
+
+
+  {/* Album / Movie / Show Title (80%) */}
+  <div className="w-[80%] overflow-hidden relative">
+    <div className="whitespace-nowrap animate-marquee text-yellow-400 font-bold text-xs leading-tight">
+      {currentTrack?.album_movie_show_title || "Unknown album"}
+    </div>
+  </div>
+</div>
+
 
         {/* Progress Bar */}
         <input

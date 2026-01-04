@@ -12,6 +12,7 @@ import PlayerBar from "./components/audio_player/PlayerBar";
 import GenericHolder from "./components/audio_player/components/GenericHolder";
 import { motion } from "framer-motion";
 import { useAudioPlayer } from "./components/audio_player/context/AudioPlayerContext";
+import AllSongs from "./components/audio_player/components/AllSongs";
 
 export default function App() {
   return (
@@ -28,6 +29,10 @@ export default function App() {
               <Route
                 path="/audio-player/generalList"
                 element={<GenericHolder />}
+              />
+               <Route
+                path="/audio-player/all-songs"
+                element={<AllSongs />}
               />
               <Route path="/video-player" element={<VideoPlayer />} />
               <Route
