@@ -58,7 +58,7 @@ export default function App() {
 
 function PageBottomSpacer() {
   const { expanded } = useAudioPlayer();
-  return <div className={expanded ? "h-[300px]" : "h-[80px]"} />;
+  return <div className={expanded ? "h-[300px]" : "h-[150px]"} />;
 }
 
 /* Floating animated player bar */
